@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://dk8m3cdy62gim"]
 
 [ext_resource type="Script" uid="uid://bdyey688gd238" path="res://scripts/Main.gd" id="1_ig7tw"]
-[ext_resource type="PackedScene" uid="uid://88633l0vq8mq" path="res://FishingMinigame.tscn" id="2_0xm2m"]
+[ext_resource type="PackedScene" uid="uid://88633l0vq8mq" path="res://fishing_minigame.tscn" id="2_0xm2m"]
 
 [node name="Main" type="Node2D" unique_id=340850562]
 script = ExtResource("1_ig7tw")
@@ -112,6 +112,4 @@ anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="Node" type="Node" parent="." unique_id=1454230009]
-
-[node name="FishingMinigame" parent="Node" unique_id=2091229102 instance=ExtResource("2_0xm2m")]
+[node name="FishingMinigame" parent="." unique_id=2091229102 instance=ExtResource("2_0xm2m")]
