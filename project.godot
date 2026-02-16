@@ -11,8 +11,13 @@ config_version=5
 [application]
 
 config/name="StardewFishing"
+run/main_scene="uid://dk8m3cdy62gim"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[autoload]
+
+FishData="*uid://cjsjn2umh4sii"
 
 [display]
 
