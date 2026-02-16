@@ -62,7 +62,7 @@ var bite_timer: float = 0.0         # นับถอยหลัง
 
 # Preload คือการโหลด scene ไว้ล่วงหน้าในหน่วยความจำ
 # ทำให้ตอน instantiate ไม่มีอาการกระตุก
-@onready var minigame_scene = preload("res://scenes/FishingMinigame.tscn")
+@onready var minigame_scene = preload("res://FishingMinigame.tscn")
 
 
 # --------------------------------------------------
