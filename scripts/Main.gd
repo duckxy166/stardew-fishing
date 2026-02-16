@@ -1,30 +1,29 @@
 extends Node2D
 
 # ====================================================
-# Main.gd - Script หลักของเกมตกปลา
+# Main.gd - Episode 2
 # ====================================================
-# Script นี้ควบคุม "loop" หลักของเกมทั้งหมด
-# ทุกอย่างเริ่มและจบที่นี่
+# เพิ่มจาก EP01:
+# - ทุ่นเหวี่ยงด้วย Tween พร้อม arc โค้ง
+# - สายเบ็ดลากตามทุ่นทุก frame
+# - ทุ่นเด้งขึ้นลงตอนรอปลา
+# - ทุ่นดำดิ่ง + label สั่นตอนปลากิน
+# - สีแฟลชตอนจับได้หรือพลาด
 # ====================================================
 
 
 # --------------------------------------------------
-# State Machine
+# State Machine (เหมือนเดิม)
 # --------------------------------------------------
-# enum คือการสร้างชื่อให้กับตัวเลข
-# แทนที่จะใช้ current_state = 0, 1, 2...
-# เราใช้ current_state = FishingState.CASTING
-# ทำให้โค้ดอ่านง่ายขึ้นมาก
 
 enum FishingState {
-	CASTING,    # 0 - กำลังเหวี่ยงเบ็ด
-	WAITING,    # 1 - รอปลากิน
-	BITING,     # 2 - ปลากินเบ็ดแล้ว รอผู้เล่นคลิก
-	MINIGAME,   # 3 - อยู่ใน mini-game
-	RESULT      # 4 - แสดงผลว่าจับได้หรือพลาด
+	CASTING,
+	WAITING,
+	BITING,
+	MINIGAME,
+	RESULT
 }
 
-# ตัวแปรเก็บสถานะปัจจุบัน
 var current_state: FishingState = FishingState.CASTING
 
 
@@ -32,201 +31,273 @@ var current_state: FishingState = FishingState.CASTING
 # ข้อมูลเกม
 # --------------------------------------------------
 
-var money: int = 0                  # เงินของผู้เล่น
-var current_fish: Dictionary = {}   # ปลาที่กำลังจะจับ (เลือกตอน WAITING)
+var money: int = 0
+var current_fish: Dictionary = {}
 
-# เวลาสุ่มสำหรับรอปลากิน (วินาที)
 const MIN_WAIT_TIME: float = 3.0
 const MAX_WAIT_TIME: float = 8.0
-var wait_timer: float = 0.0         # นับถอยหลัง
+var wait_timer: float = 0.0
 
-# เวลาที่ผู้เล่นมีโอกาสคลิกตอนปลากิน (วินาที)
 const BITE_WINDOW: float = 2.0
-var bite_timer: float = 0.0         # นับถอยหลัง
+var bite_timer: float = 0.0
+
+
+# --------------------------------------------------
+# ตำแหน่งสำคัญในเกม
+# --------------------------------------------------
+# กำหนดเป็น const ทำให้ปรับค่าได้จากที่เดียว
+# ถ้าต้องการย้ายตัวละคร แก้แค่ตรงนี้จุดเดียว
+
+const CHARACTER_POS     := Vector2(350, 430)
+const ROD_TIP_POS       := Vector2(390, 390)
+const BOBBER_IDLE_POS   := Vector2(800, 510)
+const BOBBER_BITE_POS   := Vector2(800, 535)
+const BOBBER_RESET_POS  := Vector2(390, 395)
+
+
+# --------------------------------------------------
+# ตัวแปรสำหรับ animation
+# --------------------------------------------------
+
+var bobber_bob_tween: Tween
+var bite_shake_tween: Tween
+var bob_timer: float = 0.0
 
 
 # --------------------------------------------------
 # References ไปยัง Node ลูก
 # --------------------------------------------------
-# @onready หมายความว่า "ให้หา Node นี้ตอนที่ scene โหลดเสร็จแล้ว"
-# ถ้าเราไม่ใช้ @onready แล้วหา Node ใน _init() จะ error
-# เพราะ Node ยังไม่ถูกสร้างขึ้นมา
 
-@onready var money_label: Label = $UI/MoneyLabel
-@onready var notify_label: Label = $UI/NotifyLabel
-@onready var casting_label: Label = $UI/CastingLabel
-@onready var bobber: Sprite2D = $FishingRod/Bobber
-@onready var fishing_line: Line2D = $FishingRod/Line
-@onready var animation_player: AnimationPlayer = $Character/AnimationPlayer
+@onready var money_label: Label      = $UI/MoneyLabel
+@onready var notify_label: Label     = $UI/NotifyLabel
+@onready var casting_label: Label    = $UI/CastingLabel
+@onready var bobber: Sprite2D        = $FishingRod/Line/Bobber
+@onready var fishing_line: Line2D    = $FishingRod/Line
 @onready var minigame_container: Control = $MinigameContainer
 
-# Preload คือการโหลด scene ไว้ล่วงหน้าในหน่วยความจำ
-# ทำให้ตอน instantiate ไม่มีอาการกระตุก
-@onready var minigame_scene = preload("res://FishingMinigame.tscn")
+var minigame_scene = preload("res://scenes/FishingMinigame.tscn")
 
 
 # --------------------------------------------------
-# _ready() - ทำงานครั้งแรกที่ Scene โหลดเสร็จ
+# _ready()
 # --------------------------------------------------
-# _ready() คือ "constructor" ของ Godot
-# เขียนทุกอย่างที่ต้องทำแค่ครั้งเดียวตอนเริ่มเกมตรงนี้
 
 func _ready() -> void:
+	setup_placeholder_character()
+	setup_placeholder_rod()
 	update_money_display()
 	change_state(FishingState.CASTING)
 
 
 # --------------------------------------------------
-# _process(delta) - ทำงานทุก frame
+# setup_placeholder_character()
 # --------------------------------------------------
-# delta คือเวลาที่ผ่านไปนับจาก frame ก่อนหน้า (หน่วย: วินาที)
-# ปกติจะอยู่ที่ประมาณ 0.016 วินาที ถ้าเกมรัน 60 fps
-#
-# ทำไมต้องใช้ delta?
-# ถ้าเราทำ wait_timer -= 1 ทุก frame
-# บนเครื่องเร็ว (120fps) จะนับถอยหลังเร็วกว่าเครื่องช้า (30fps)
-# แต่ถ้าเราทำ wait_timer -= delta
-# 1 วินาทีจะเท่ากันทุกเครื่องเสมอ
+
+func setup_placeholder_character() -> void:
+	$Character.position = CHARACTER_POS
+
+	# ตัว (สี่เหลี่ยมสีผิว)
+	var img = Image.create(48, 64, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.9, 0.75, 0.6))
+	var tex = ImageTexture.create_from_image(img)
+	var char_sprite = Sprite2D.new()
+	char_sprite.texture = tex
+	char_sprite.position = Vector2(0, -32)
+	$Character.add_child(char_sprite)
+
+	# หัว (วงกลม 16 จุด)
+	var head = Polygon2D.new()
+	var head_points: PackedVector2Array = []
+	for i in range(16):
+		var angle = (i / 16.0) * TAU
+		head_points.append(Vector2(cos(angle) * 14, sin(angle) * 14 - 72))
+	head.polygon = head_points
+	head.color = Color(0.9, 0.75, 0.6)
+	$Character.add_child(head)
+
+
+# --------------------------------------------------
+# setup_placeholder_rod()
+# --------------------------------------------------
+
+func setup_placeholder_rod() -> void:
+	$FishingRod.position = CHARACTER_POS
+
+	# คันเบ็ดเป็นเส้น Line2D สีน้ำตาล
+	var rod_line = Line2D.new()
+	rod_line.add_point(Vector2(0, -60))
+	rod_line.add_point(Vector2(40, -40))
+	rod_line.width = 4.0
+	rod_line.default_color = Color(0.45, 0.3, 0.15)
+	$FishingRod.add_child(rod_line)
+
+	# ทุ่นเริ่มต้นที่ปลายคัน
+	bobber.position = BOBBER_RESET_POS
+
+	# ตั้งค่าสายเบ็ด
+	fishing_line.width = 1.5
+	fishing_line.default_color = Color(0.85, 0.75, 0.6, 0.8)
+
+	# สร้าง placeholder ทุ่น (วงกลมสีแดง)
+	var bobber_img = Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	for y in range(16):
+		for x in range(16):
+			var dx = x - 8.0
+			var dy = y - 8.0
+			if dx * dx + dy * dy <= 64:
+				bobber_img.set_pixel(x, y, Color(0.9, 0.15, 0.15))
+			else:
+				bobber_img.set_pixel(x, y, Color(0, 0, 0, 0))
+	bobber.texture = ImageTexture.create_from_image(bobber_img)
+
+
+# --------------------------------------------------
+# _process(delta)
+# --------------------------------------------------
 
 func _process(delta: float) -> void:
-	# ตรวจสอบว่าตอนนี้อยู่ใน state ไหน แล้วจัดการตาม state นั้น
 	match current_state:
 		FishingState.CASTING:
 			process_casting(delta)
 		FishingState.WAITING:
 			process_waiting(delta)
+			process_bobber_bob(delta)
 		FishingState.BITING:
 			process_biting(delta)
 		FishingState.MINIGAME:
-			pass  # mini-game จัดการตัวเองผ่าน signal
+			pass
 		FishingState.RESULT:
-			pass  # รอ animation จบ
+			pass
+
+	if current_state != FishingState.CASTING:
+		update_fishing_line()
 
 
 # --------------------------------------------------
-# Input - รับการกดของผู้เล่น
+# process_bobber_bob() - ทุ่นเด้งด้วย sin wave
 # --------------------------------------------------
-# _input() ทำงานทุกครั้งที่มี input event เกิดขึ้น
-# ต่างจาก _process() ที่ทำงานทุก frame
-# ใช้ _input() สำหรับการตรวจ "การกด" เพื่อไม่ให้พลาด
+# sin(เวลา * ความเร็ว) ให้ค่า -1 ถึง 1 วนซ้ำ
+# คูณ amplitude = ระยะเด้ง
 
-func _input(event: InputEvent) -> void:
-	# ตอน BITING เท่านั้นที่ผู้เล่นต้องคลิก
-	if current_state == FishingState.BITING:
-		# ตรวจว่า event นี้คือการกดเมาส์ซ้ายหรือไม่
-		if event is InputEventMouseButton:
-			if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-				on_player_clicked()
+func process_bobber_bob(delta: float) -> void:
+	bob_timer += delta
+	var amplitude = 4.0
+	var speed = 2.0
+	var new_y = BOBBER_IDLE_POS.y + sin(bob_timer * speed) * amplitude
+	bobber.position = Vector2(BOBBER_IDLE_POS.x, new_y)
 
 
 # --------------------------------------------------
-# State Functions - ฟังก์ชันที่ทำงานใน state ต่างๆ
+# update_fishing_line() - ลากสายเบ็ดทุก frame
+# --------------------------------------------------
+
+func update_fishing_line() -> void:
+	fishing_line.points = PackedVector2Array([
+		ROD_TIP_POS,
+		bobber.position
+	])
+
+
+# --------------------------------------------------
+# State Functions
 # --------------------------------------------------
 
 func process_casting(delta: float) -> void:
-	# ตอนนี้แค่เล่น animation แล้วเปลี่ยน state
-	# animation_player จะส่ง signal "animation_finished" เมื่อเสร็จ
-	# แต่ EP01 นี้ยังไม่มี animation จริง เลยกำหนดเวลาตรงๆ ไปก่อน
 	wait_timer -= delta
 	if wait_timer <= 0:
 		change_state(FishingState.WAITING)
 
 
 func process_waiting(delta: float) -> void:
-	# นับถอยหลัง รอปลากิน
 	wait_timer -= delta
 	if wait_timer <= 0:
-		# ถึงเวลาแล้ว ปลากิน!
-		pick_random_fish()
+		current_fish = FishData.get_random_fish()
 		change_state(FishingState.BITING)
 
 
 func process_biting(delta: float) -> void:
-	# นับถอยหลัง ถ้าผู้เล่นไม่คลิกทัน = พลาด
 	bite_timer -= delta
 	if bite_timer <= 0:
 		on_bite_missed()
 
 
 # --------------------------------------------------
-# Game Logic Functions
+# _input()
 # --------------------------------------------------
 
-func pick_random_fish() -> void:
-	# สุ่มปลาจาก FishData
-	# FishData.get_random_fish() จะถูกสร้างใน Episode 4
-	# ตอนนี้ hardcode ไว้ก่อน
-	var fish_list = [
-		{"name": "Salmon",       "price": 75,  "difficulty": 0.7, "color": Color(1, 0.3, 0.3)},
-		{"name": "Sea Cucumber", "price": 75,  "difficulty": 0.4, "color": Color(0.4, 0.6, 0.4)},
-		{"name": "Shad",         "price": 60,  "difficulty": 0.5, "color": Color(0.6, 0.8, 1.0)},
-		{"name": "Herring",      "price": 30,  "difficulty": 0.3, "color": Color(0.7, 0.7, 1.0)},
-		{"name": "Anchovy",      "price": 30,  "difficulty": 0.3, "color": Color(0.9, 0.9, 0.5)},
-	]
-	# randi_range(0, size-1) คือการสุ่มเลขจำนวนเต็มในช่วงที่กำหนด
-	current_fish = fish_list[randi_range(0, fish_list.size() - 1)]
+func _input(event: InputEvent) -> void:
+	if current_state == FishingState.BITING:
+		if event is InputEventMouseButton:
+			if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+				on_player_clicked()
 
+
+# --------------------------------------------------
+# Game Logic
+# --------------------------------------------------
 
 func on_player_clicked() -> void:
-	# ผู้เล่นคลิกทัน เข้า mini-game
 	change_state(FishingState.MINIGAME)
 
 
 func on_bite_missed() -> void:
-	# ผู้เล่นช้าเกินไป ปลาหนีแล้ว
+	if bite_shake_tween:
+		bite_shake_tween.kill()
+	notify_label.position.x = 500
+	notify_label.modulate = Color.WHITE
 	show_notification("ปลาหนีไปแล้ว...")
 	change_state(FishingState.CASTING)
 
 
 func on_minigame_success(fish_data: Dictionary) -> void:
-	# รับ signal จาก FishingMinigame เมื่อจับปลาสำเร็จ
 	money += fish_data["price"]
 	update_money_display()
 	show_notification("จับได้! " + fish_data["name"] + " +" + str(fish_data["price"]) + " G")
+	show_result_flash(true)
 	change_state(FishingState.RESULT)
 
 
 func on_minigame_failed() -> void:
-	# รับ signal จาก FishingMinigame เมื่อจับพลาด
 	show_notification("พลาด! ปลาหนีไป")
+	show_result_flash(false)
 	change_state(FishingState.RESULT)
 
 
 # --------------------------------------------------
-# change_state() - เปลี่ยน State พร้อมตั้งค่าใหม่
+# change_state()
 # --------------------------------------------------
-# ฟังก์ชันนี้สำคัญมาก เพราะทุกการเปลี่ยน state ต้องผ่านที่นี่
-# ทำให้เราควบคุมและ debug ได้ง่าย
 
 func change_state(new_state: FishingState) -> void:
-	# ออกจาก state เก่า - ทำสิ่งที่ต้องทำเมื่อออก
 	match current_state:
 		FishingState.MINIGAME:
-			# ลบ mini-game scene ออกจากหน่วยความจำ
 			for child in minigame_container.get_children():
 				child.queue_free()
+		FishingState.BITING:
+			if bite_shake_tween:
+				bite_shake_tween.kill()
+			notify_label.position.x = 500
+			notify_label.modulate = Color.WHITE
 
-	# เปลี่ยน state
 	current_state = new_state
-	print("State เปลี่ยนเป็น: ", FishingState.keys()[new_state])
+	print("State: ", FishingState.keys()[new_state])
 
-	# เข้าสู่ state ใหม่ - ตั้งค่าเริ่มต้น
 	match new_state:
 		FishingState.CASTING:
 			casting_label.text = "กำลังเหวี่ยงเบ็ด..."
 			notify_label.text = ""
-			wait_timer = 1.5  # เวลา animation เหวี่ยง (EP5 จะใช้ animation จริง)
+			bob_timer = 0.0
+			wait_timer = 1.0
+			cast_bobber()
 
 		FishingState.WAITING:
 			casting_label.text = "รอปลากิน..."
-			# สุ่มเวลารอระหว่าง MIN_WAIT_TIME ถึง MAX_WAIT_TIME
 			wait_timer = randf_range(MIN_WAIT_TIME, MAX_WAIT_TIME)
 
 		FishingState.BITING:
 			casting_label.text = ""
 			notify_label.text = "คลิกเดี๋ยวนี้!"
 			bite_timer = BITE_WINDOW
-			# เล่นเสียงและ animation ตอนปลากิน (EP6)
+			show_bite_effect()
 
 		FishingState.MINIGAME:
 			notify_label.text = ""
@@ -234,34 +305,94 @@ func change_state(new_state: FishingState) -> void:
 			start_minigame()
 
 		FishingState.RESULT:
-			# รอสักครู่แล้วกลับไป CASTING
 			await get_tree().create_timer(2.0).timeout
 			change_state(FishingState.CASTING)
 
 
 # --------------------------------------------------
-# Mini-game Functions
+# cast_bobber() - เหวี่ยงทุ่นด้วย Tween arc
+# --------------------------------------------------
+# ใช้ Tween 2 ตัวแยก X และ Y เพื่อทำเส้นโค้ง
+
+func cast_bobber() -> void:
+	if bobber_bob_tween:
+		bobber_bob_tween.kill()
+
+	bobber.position = BOBBER_RESET_POS
+
+	var cast_duration = 0.8
+
+	# X: เลื่อนขวาตรงๆ ชะลอก่อนถึง
+	var tween_x = create_tween()
+	tween_x.tween_property(bobber, "position:x",
+		BOBBER_IDLE_POS.x, cast_duration)
+	tween_x.set_ease(Tween.EASE_OUT)
+	tween_x.set_trans(Tween.TRANS_QUAD)
+
+	# Y: ขึ้นสูงก่อน 40% แล้วลงน้ำ 60%
+	var tween_y = create_tween()
+	tween_y.tween_property(bobber, "position:y",
+		BOBBER_RESET_POS.y - 150, cast_duration * 0.4)
+	tween_y.set_ease(Tween.EASE_OUT)
+	tween_y.tween_property(bobber, "position:y",
+		BOBBER_IDLE_POS.y, cast_duration * 0.6)
+	tween_y.set_ease(Tween.EASE_IN)
+
+	# รอ X tween เสร็จ แล้วเปลี่ยน state
+	await tween_x.finished
+	change_state(FishingState.WAITING)
+
+
+# --------------------------------------------------
+# show_bite_effect() - ทุ่นดำดิ่ง + label สั่น
+# --------------------------------------------------
+
+func show_bite_effect() -> void:
+	# ทุ่นดำดิ่ง
+	var dip_tween = create_tween()
+	dip_tween.tween_property(bobber, "position:y",
+		BOBBER_BITE_POS.y, 0.15)
+	dip_tween.set_ease(Tween.EASE_IN)
+
+	# Label สีแดง
+	notify_label.modulate = Color(1.0, 0.2, 0.2)
+
+	# Label สั่นวนซ้ำ
+	bite_shake_tween = create_tween()
+	bite_shake_tween.set_loops()
+	var shake = 6.0
+	var speed = 0.06
+	bite_shake_tween.tween_property(notify_label, "position:x", 500.0 + shake, speed)
+	bite_shake_tween.tween_property(notify_label, "position:x", 500.0 - shake, speed)
+	bite_shake_tween.tween_property(notify_label, "position:x", 500.0, speed)
+
+
+# --------------------------------------------------
+# show_result_flash() - แฟลชสีบอกผล
+# --------------------------------------------------
+
+func show_result_flash(success: bool) -> void:
+	var flash_color = Color(0.3, 1.0, 0.4) if success else Color(1.0, 0.3, 0.3)
+	notify_label.modulate = flash_color
+	var flash_tween = create_tween()
+	flash_tween.tween_property(notify_label, "modulate", Color.WHITE, 1.5)
+	flash_tween.set_ease(Tween.EASE_IN)
+
+
+# --------------------------------------------------
+# Mini-game
 # --------------------------------------------------
 
 func start_minigame() -> void:
-	# สร้าง instance ของ FishingMinigame scene
-	# instance คือการสร้าง "ก็อปปี้" ของ scene ขึ้นมาใช้งาน
 	var minigame = minigame_scene.instantiate()
-
-	# ส่งข้อมูลปลาไปให้ mini-game รู้ว่ากำลังจับปลาอะไร
 	minigame.fish_data = current_fish
-
-	# ใส่ mini-game เข้าไปใน container
 	minigame_container.add_child(minigame)
-
-	# เชื่อม signal จาก mini-game มายัง Main
-	# "fish_caught" คือ signal ที่ FishingMinigame จะส่งออกมา
 	minigame.fish_caught.connect(on_minigame_success)
 	minigame.fish_escaped.connect(on_minigame_failed)
 
 
 # --------------------------------------------------
-# UI Functions
+# UI
 # --------------------------------------------------
 
 func update_money_display() -> void:

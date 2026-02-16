@@ -93,7 +93,7 @@ func _ready() -> void:
 	# ปลายาก = green zone เล็ก = จับยากขึ้น
 	var difficulty = fish_data.get("difficulty", 0.5)
 	# difficulty 1.0 = green zone เล็กสุด (60px), difficulty 0.0 = ใหญ่สุด (140px)
-	var zone_size = lerp(140.0, 60.0, difficulty)
+	var _zone_size = lerp(140.0, 60.0, difficulty)
 	# แต่ใน EP01 ใช้ค่าคงที่ก่อน
 	# zone_size = GREEN_ZONE_HEIGHT
 
