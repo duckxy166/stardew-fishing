@@ -103,8 +103,7 @@ func _ready() -> void:
 # แค่ย้ายตำแหน่ง, scale, แล้วเล่น animation
 
 func setup_character() -> void:
-	$Character.position = CHARACTER_POS
-	$Character.scale = Vector2(4, 4)
+	# position, scale ใช้ค่าจาก Editor ทั้งหมด (วางใน main.tscn ได้อิสระ)
 	$Character.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	char_anim.play("Fishing")
 
@@ -283,10 +282,11 @@ func change_state(new_state: FishingState) -> void:
 			notify_label.text = ""
 			bob_timer = 0.0
 			wait_timer = 1.0
-			char_anim.play("Fishing")
+			char_anim.play("throw")
 			cast_bobber()
 
 		FishingState.WAITING:
+			char_anim.play("Fishing")
 			casting_label.text = "รอปลากิน..."
 			wait_timer = randf_range(MIN_WAIT_TIME, MAX_WAIT_TIME)
 

@@ -67,12 +67,29 @@ tracks/0/keys = {
 "values": [Rect2(16.5, 256.94, 14.691, 56.06), Rect2(32.5, 256.94, 14.691, 56.06)]
 }
 
+[sub_resource type="Animation" id="Animation_ry56e"]
+resource_name = "throw"
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:region_rect")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.73333335),
+"transitions": PackedFloat32Array(1e-05, 1e-05),
+"update": 0,
+"values": [Rect2(0, 192.616, 16, 32.063), Rect2(16, 192.616, 15.5, 32)]
+}
+
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_wfnr8"]
 _data = {
 &"Fishing": SubResource("Animation_pjt0s"),
 &"Get_fish": SubResource("Animation_gmud2"),
 &"RESET": SubResource("Animation_wa5vi"),
-&"Reeling": SubResource("Animation_7oq2q")
+&"Reeling": SubResource("Animation_7oq2q"),
+&"throw": SubResource("Animation_ry56e")
 }
 
 [node name="Character" type="Sprite2D" unique_id=1068533866]
