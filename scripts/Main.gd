@@ -1,14 +1,18 @@
 extends Node2D
 
 # ====================================================
-# Main.gd - Episode 2
+# Main.gd - Episode 4
 # ====================================================
-# เพิ่มจาก EP01:
+# เพิ่มจาก EP02:
 # - ทุ่นเหวี่ยงด้วย Tween พร้อม arc โค้ง
 # - สายเบ็ดลากตามทุ่นทุก frame
 # - ทุ่นเด้งขึ้นลงตอนรอปลา
 # - ทุ่นดำดิ่ง + label สั่นตอนปลากิน
 # - สีแฟลชตอนจับได้หรือพลาด
+# เพิ่มจาก EP04:
+# - เรียก FishData.add_catch() ตอนจับปลาได้
+# - เรียก FishData.add_escape() ตอนปลาหนี
+# - เปิด Inventory UI ด้วยปุ่ม TAB
 # ====================================================
 
 
@@ -241,6 +245,7 @@ func on_player_clicked() -> void:
 
 
 func on_bite_missed() -> void:
+	FishData.add_escape()
 	if bite_shake_tween:
 		bite_shake_tween.kill()
 	notify_label.position.x = 500
@@ -251,6 +256,7 @@ func on_bite_missed() -> void:
 
 func on_minigame_success(fish_data: Dictionary) -> void:
 	money += fish_data["price"]
+	FishData.add_catch(fish_data)
 	update_money_display()
 	show_notification("จับได้! " + fish_data["name"] + " +" + str(fish_data["price"]) + " G")
 	show_result_flash(true)
@@ -258,6 +264,7 @@ func on_minigame_success(fish_data: Dictionary) -> void:
 
 
 func on_minigame_failed() -> void:
+	FishData.add_escape()
 	show_notification("พลาด! ปลาหนีไป")
 	show_result_flash(false)
 	change_state(FishingState.RESULT)

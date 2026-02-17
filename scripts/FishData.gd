@@ -1,28 +1,22 @@
 extends Node
 
 # ====================================================
-# FishData.gd - ข้อมูลปลาทุกชนิดในเกม
+# FishData.gd - Episode 4
 # ====================================================
-# ทำเป็น Autoload (Singleton) เพื่อให้ทุก Scene เรียกใช้ได้
-# วิธีตั้ง Autoload: Project > Project Settings > Autoload
-# กด + แล้วเลือกไฟล์นี้ ตั้งชื่อ "FishData"
-# จากนั้น script ไหนก็ตามเรียก FishData.FISH_LIST ได้เลย
+# เพิ่มจาก EP01:
+# - static var inventory เก็บสถิติการจับ
+# - add_catch() บันทึกการจับแต่ละครั้ง
+# - get_total_value() คำนวณมูลค่ารวม
+# - get_catch_count() ดูจำนวนที่จับได้
 # ====================================================
 
 
 # --------------------------------------------------
-# ข้อมูลปลาทุกชนิด
+# ข้อมูลปลาทุกชนิด (เหมือนเดิม)
 # --------------------------------------------------
-# Dictionary คือการเก็บข้อมูลแบบ key-value
-# เหมือน JSON ที่คุ้นเคยกัน
-#
-# price    = ราคาขาย (Gold)
-# difficulty = ความยาก mini-game (0.0 ง่าย ถึง 1.0 ยาก)
-# color    = สีของ fish icon ใน mini-game (ก่อน EP5 มี sprite จริง)
-# min_time = เวลารอน้อยสุดก่อนปลากิน (วินาที)
-# max_time = เวลารอมากสุดก่อนปลากิน (วินาที)
-# weight   = โอกาสที่ปลาชนิดนี้จะขึ้นมา (สูง = ขึ้นบ่อย)
-# desc     = คำอธิบายปลาภาษาไทย
+# weight = โอกาสที่ปลาชนิดนี้จะขึ้น
+# ยิ่งสูง ยิ่งออกบ่อย
+# Anchovy 30 vs Salmon 15 = Anchovy ออกบ่อยกว่า 2 เท่า
 
 const FISH_LIST: Array = [
 	{
@@ -89,40 +83,136 @@ const FISH_LIST: Array = [
 
 
 # --------------------------------------------------
-# get_random_fish() - สุ่มปลาโดยใช้ระบบ weight
+# Inventory - สถิติการจับปลา (EP4 ใหม่)
 # --------------------------------------------------
-# ระบบ weight คือการสุ่มที่ไม่เท่ากัน
-# เช่น Anchovy weight 30, Salmon weight 15
-# Anchovy มีโอกาสออกมาเป็น 2 เท่าของ Salmon
+# ไม่ใช่ const เพราะต้องการแก้ค่าได้ระหว่างเกม
+# Dictionary: key = fish id, value = จำนวนที่จับได้
 #
-# วิธีคิด: สุ่มเลขจาก 0 ถึง weight_total
-# แล้วลบ weight ของแต่ละปลาออกทีละตัว
-# ปลาที่ทำให้ผลรวมติดลบ = ปลาที่ถูกเลือก
+# ทำไมใช้ static var?
+# static var คือตัวแปรที่ใช้ร่วมกันทุก instance ของ class
+# เนื่องจาก FishData เป็น Autoload (มี instance เดียว)
+# จึงไม่ต่างกัน แต่ static ทำให้เรียกจาก get_fish_by_id() ได้โดยตรง
 
-static func get_random_fish() -> Dictionary:
-	# คำนวณ weight รวมทั้งหมด
+var inventory: Dictionary = {}
+var total_earned: int = 0          # เงินรวมที่หาได้ตลอดเกม
+var total_caught: int = 0          # จำนวนปลารวมที่จับได้
+var total_escaped: int = 0         # จำนวนครั้งที่ปลาหนี
+
+
+# --------------------------------------------------
+# get_random_fish() - สุ่มปลาด้วย Weighted Random
+# --------------------------------------------------
+# อธิบาย algorithm:
+# 1. รวม weight ทั้งหมด
+# 2. สุ่มเลข 0 ถึง total-1
+# 3. ลบ weight ทีละตัว ปลาไหนทำให้ roll ติดลบ = ปลานั้น
+
+func get_random_fish() -> Dictionary:
 	var total_weight = 0
 	for fish in FISH_LIST:
 		total_weight += fish["weight"]
 
-	# สุ่มเลขในช่วง 0 ถึง total_weight
 	var roll = randi_range(0, total_weight - 1)
 
-	# ไล่ทีละตัว ลบ weight ออกเรื่อยๆ
 	for fish in FISH_LIST:
 		roll -= fish["weight"]
 		if roll < 0:
 			return fish
 
-	# ถ้าเกิด error (ไม่ควรเกิด) ส่งค่าสุดท้ายกลับไป
 	return FISH_LIST[-1]
+
+
+# --------------------------------------------------
+# add_catch() - บันทึกการจับปลา (EP4 ใหม่)
+# --------------------------------------------------
+# เรียกจาก Main.gd ตอน on_minigame_success()
+# fish_data = Dictionary ที่ได้จาก signal fish_caught
+
+func add_catch(fish_data: Dictionary) -> void:
+	var id = fish_data.get("id", "unknown")
+
+	# ถ้ายังไม่เคยจับปลาชนิดนี้ ตั้งค่าเริ่มต้นเป็น 0
+	if not inventory.has(id):
+		inventory[id] = 0
+
+	# เพิ่มจำนวน
+	inventory[id] += 1
+	total_caught += 1
+	total_earned += fish_data.get("price", 0)
+
+
+# --------------------------------------------------
+# add_escape() - บันทึกปลาที่หนีไป (EP4 ใหม่)
+# --------------------------------------------------
+
+func add_escape() -> void:
+	total_escaped += 1
+
+
+# --------------------------------------------------
+# get_catch_count() - ดูจำนวนปลาชนิดที่จับได้ (EP4 ใหม่)
+# --------------------------------------------------
+
+func get_catch_count(fish_id: String) -> int:
+	return inventory.get(fish_id, 0)
+
+
+# --------------------------------------------------
+# get_total_value() - คำนวณมูลค่าปลาทั้งหมดใน inventory (EP4 ใหม่)
+# --------------------------------------------------
+
+func get_total_value() -> int:
+	var total = 0
+	for id in inventory:
+		var fish = get_fish_by_id(id)
+		if not fish.is_empty():
+			total += fish["price"] * inventory[id]
+	return total
+
+
+# --------------------------------------------------
+# get_inventory_list() - แปลง inventory เป็น Array สำหรับแสดงผล (EP4 ใหม่)
+# --------------------------------------------------
+# คืน Array ของ Dictionary แต่ละตัวมี: id, name, count, total_price
+
+func get_inventory_list() -> Array:
+	var result = []
+	for id in inventory:
+		var fish = get_fish_by_id(id)
+		if not fish.is_empty():
+			result.append({
+				"id": id,
+				"name": fish["name"],
+				"name_th": fish.get("name_th", fish["name"]),
+				"count": inventory[id],
+				"price_each": fish["price"],
+				"total_price": fish["price"] * inventory[id],
+				"color": fish["color"]
+			})
+
+	# เรียงตาม total_price มากไปน้อย
+	# Callable คือการส่งฟังก์ชันเป็น argument
+	result.sort_custom(func(a, b): return a["total_price"] > b["total_price"])
+	return result
 
 
 # --------------------------------------------------
 # get_fish_by_id() - หาปลาจาก id
 # --------------------------------------------------
-static func get_fish_by_id(id: String) -> Dictionary:
+
+func get_fish_by_id(id: String) -> Dictionary:
 	for fish in FISH_LIST:
 		if fish["id"] == id:
 			return fish
 	return {}
+
+
+# --------------------------------------------------
+# reset_inventory() - รีเซ็ตสถิติทั้งหมด (EP4 ใหม่)
+# --------------------------------------------------
+
+func reset_inventory() -> void:
+	inventory.clear()
+	total_earned = 0
+	total_caught = 0
+	total_escaped = 0

@@ -1,0 +1,68 @@
+[gd_scene format=3 uid="uid://r0txjaeajhb7"]
+
+[ext_resource type="Script" uid="uid://chb8ihoeio0i0" path="res://scripts/inventory_ui.gd" id="1_tahbm"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ylkvr"]
+bg_color = Color(0.101960786, 0.101960786, 0.18039216, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.54509807, 0.4509804, 0.33333334, 1)
+
+[node name="InventoryUI" type="Control" unique_id=823288839]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_tahbm")
+
+[node name="Panel" type="Panel" parent="." unique_id=1745565306]
+layout_mode = 0
+offset_left = 330.0
+offset_top = 80.0
+offset_right = 890.0
+offset_bottom = 500.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_ylkvr")
+
+[node name="VBox" type="VBoxContainer" parent="Panel" unique_id=1530085182]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="Panel/VBox" unique_id=676527694]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "ปลาที่จับได้"
+horizontal_alignment = 1
+
+[node name="Separator" type="HSeparator" parent="Panel/VBox" unique_id=241815963]
+layout_mode = 2
+
+[node name="FishList" type="VBoxContainer" parent="Panel/VBox" unique_id=261597413]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="TotalLabel" type="Label" parent="Panel/VBox" unique_id=1658574525]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 1, 0.53333336, 1)
+theme_override_font_sizes/font_size = 16
+text = "0 G"
+
+[node name="StatsLabel" type="Label" parent="Panel/VBox" unique_id=1537478130]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "จับได้: 0 | หนีไป: 0"
