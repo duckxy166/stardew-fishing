@@ -1,0 +1,86 @@
+[gd_scene format=3 uid="uid://t4g2k17o013i"]
+
+[ext_resource type="Texture2D" uid="uid://svvr3bheygff" path="res://assets/sprites/willy.png" id="1_7oq2q"]
+
+[sub_resource type="Animation" id="Animation_pjt0s"]
+resource_name = "Fishing"
+length = 2.0
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:region_rect")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0.033333335, 0.6666667, 1.2, 1.6),
+"transitions": PackedFloat32Array(1e-05, 1e-05, 1.2745596e-05, 1e-05),
+"update": 0,
+"values": [Rect2(0, 129.235, 16, 56.765), Rect2(16, 129.235, 16, 56.765), Rect2(32, 129.235, 16, 56.765), Rect2(48, 129.235, 16, 56.765)]
+}
+
+[sub_resource type="Animation" id="Animation_gmud2"]
+resource_name = "Get_fish"
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:region_rect")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0.07031789, 0.33333334, 0.56666666, 0.8333333),
+"transitions": PackedFloat32Array(1e-05, 1e-05, 1e-05, 1e-05),
+"update": 0,
+"values": [Rect2(0, 225, 16, 32), Rect2(15.5, 225, 16, 31), Rect2(31.5, 225, 16, 31), Rect2(48, 225, 16, 32)]
+}
+
+[sub_resource type="Animation" id="Animation_wa5vi"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:region_rect")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Rect2(0, 129.235, 16, 56.765)]
+}
+
+[sub_resource type="Animation" id="Animation_7oq2q"]
+resource_name = "Reeling"
+length = 0.8
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:region_rect")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0.13333334, 0.5),
+"transitions": PackedFloat32Array(1e-05, 1e-05),
+"update": 0,
+"values": [Rect2(16.5, 256.94, 14.691, 56.06), Rect2(32.5, 256.94, 14.691, 56.06)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_wfnr8"]
+_data = {
+&"Fishing": SubResource("Animation_pjt0s"),
+&"Get_fish": SubResource("Animation_gmud2"),
+&"RESET": SubResource("Animation_wa5vi"),
+&"Reeling": SubResource("Animation_7oq2q")
+}
+
+[node name="Character" type="Sprite2D" unique_id=1068533866]
+position = Vector2(70, 12)
+texture = ExtResource("1_7oq2q")
+offset = Vector2(-70, -12)
+region_enabled = true
+region_rect = Rect2(0, 129.235, 16, 56.765)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1492689494]
+libraries/ = SubResource("AnimationLibrary_wfnr8")

@@ -81,43 +81,32 @@ var bob_timer: float = 0.0
 
 var minigame_scene = preload("res://scenes/FishingMinigame.tscn")
 
+# Reference ไปยัง Character (instance จาก character.tscn)
+@onready var char_anim: AnimationPlayer = $Character/AnimationPlayer
+
 
 # --------------------------------------------------
 # _ready()
 # --------------------------------------------------
 
 func _ready() -> void:
-	setup_placeholder_character()
+	setup_character()
 	setup_placeholder_rod()
 	update_money_display()
 	change_state(FishingState.CASTING)
 
 
 # --------------------------------------------------
-# setup_placeholder_character()
+# setup_character() - ใช้ Willy sprite จาก character.tscn
 # --------------------------------------------------
+# character.tscn มี Sprite2D + AnimationPlayer พร้อม animation "Fishing"
+# แค่ย้ายตำแหน่ง, scale, แล้วเล่น animation
 
-func setup_placeholder_character() -> void:
+func setup_character() -> void:
 	$Character.position = CHARACTER_POS
-
-	# ตัว (สี่เหลี่ยมสีผิว)
-	var img = Image.create(48, 64, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0.9, 0.75, 0.6))
-	var tex = ImageTexture.create_from_image(img)
-	var char_sprite = Sprite2D.new()
-	char_sprite.texture = tex
-	char_sprite.position = Vector2(0, -32)
-	$Character.add_child(char_sprite)
-
-	# หัว (วงกลม 16 จุด)
-	var head = Polygon2D.new()
-	var head_points: PackedVector2Array = []
-	for i in range(16):
-		var angle = (i / 16.0) * TAU
-		head_points.append(Vector2(cos(angle) * 14, sin(angle) * 14 - 72))
-	head.polygon = head_points
-	head.color = Color(0.9, 0.75, 0.6)
-	$Character.add_child(head)
+	$Character.scale = Vector2(4, 4)
+	$Character.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	char_anim.play("Fishing")
 
 
 # --------------------------------------------------
@@ -294,6 +283,7 @@ func change_state(new_state: FishingState) -> void:
 			notify_label.text = ""
 			bob_timer = 0.0
 			wait_timer = 1.0
+			char_anim.play("Fishing")
 			cast_bobber()
 
 		FishingState.WAITING:
@@ -309,9 +299,11 @@ func change_state(new_state: FishingState) -> void:
 		FishingState.MINIGAME:
 			notify_label.text = ""
 			casting_label.text = ""
+			char_anim.play("Reeling")
 			start_minigame()
 
 		FishingState.RESULT:
+			char_anim.play("Get_fish")
 			await get_tree().create_timer(2.0).timeout
 			change_state(FishingState.CASTING)
 
